@@ -158,8 +158,8 @@ def main():
             vtt_f.write(f"{start_vtt} --> {end_vtt}\n{text}\n\n")
             vtt_f.flush()
 
-            # Log segment to file and terminal
-            logger.info(f"[{ms_to_srt_time(start_ms)} -> {ms_to_srt_time(end_ms)}] {text}")
+            # Log segment to file and terminal (DEBUG level)
+            logger.debug(f"[{ms_to_srt_time(start_ms)} -> {ms_to_srt_time(end_ms)}] {text}")
 
             pbar.update(segment.end - pbar.n)
     

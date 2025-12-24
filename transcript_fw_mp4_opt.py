@@ -109,7 +109,7 @@ def main():
     logger.info(f"Audio duration: {info.duration:.2f} seconds ({info.duration/60:.2f} minutes)")
 
     # Use tqdm for progress bar based on audio duration
-    pbar = tqdm(total=info.duration, unit="s", desc="Transcription Progress")
+    pbar = tqdm(total=round(info.duration, 2), unit="s", desc="Transcription Progress", bar_format='{l_bar}{bar}| {n:.2f}/{total:.2f} [{elapsed}<{remaining}, {rate_fmt}{postfix}]')
     
     # Open files for incremental writing
     txt_path = output_dir / f"{base_name}.txt"
@@ -161,7 +161,7 @@ def main():
             # Log segment to file and terminal (DEBUG level)
             logger.debug(f"[{ms_to_srt_time(start_ms)} -> {ms_to_srt_time(end_ms)}] {text}")
 
-            pbar.update(segment.end - pbar.n)
+            pbar.update(round(segment.end, 2) - pbar.n)
     
     pbar.close()
     

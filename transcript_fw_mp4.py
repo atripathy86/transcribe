@@ -92,12 +92,12 @@ def main():
     segments, info = model.transcribe(str(input_path), beam_size=5)
     
     # Use tqdm for progress bar based on audio duration
-    pbar = tqdm(total=info.duration, unit="s", desc="Transcription Progress")
+    pbar = tqdm(total=round(info.duration, 2), unit="s", desc="Transcription Progress", bar_format='{l_bar}{bar}| {n:.2f}/{total:.2f} [{elapsed}<{remaining}, {rate_fmt}{postfix}]')
     
     all_segments = []
     for segment in segments:
         all_segments.append(segment)
-        pbar.update(segment.end - pbar.n)
+        pbar.update(round(segment.end, 2) - pbar.n)
     pbar.close()
     
     end_time = time.time()

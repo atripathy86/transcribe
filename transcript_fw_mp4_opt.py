@@ -50,7 +50,7 @@ def check_gpu_and_pause(temp_threshold=55, load_threshold=70, pause_time=60):
             util = pynvml.nvmlDeviceGetUtilizationRates(handle)
             
             if temp > temp_threshold and util.gpu > load_threshold:
-                logger.warning(f"\n[GPU ALERT] Temp: {temp}°C, Load: {util.gpu}%. Pausing for {pause_time}s to cool down...")
+                logger.warning(f"[GPU ALERT] Temp: {temp}°C, Load: {util.gpu}%. Pausing for {pause_time}s to cool down...")
                 time.sleep(pause_time)
             else:
                 break
@@ -71,7 +71,7 @@ def main():
     parser.add_argument("--compute_type", default="float16", help="Compute type (float16, int8_float16, int8, etc.)")
     parser.add_argument("--temp_limit", type=int, default=55, help="Temperature threshold to pause (default: 55)")
     parser.add_argument("--load_limit", type=int, default=70, help="Utilization threshold to pause (default: 70)")
-    parser.add_argument("--pause_time", type=int, default=60, help="Seconds to pause when thresholds exceeded (default: 60)")
+    parser.add_argument("--pause_time", type=int, default=90, help="Seconds to pause when thresholds exceeded (default: 90)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -109,7 +109,15 @@ def main():
     logger.info(f"Audio duration: {info.duration:.2f} seconds ({info.duration/60:.2f} minutes)")
 
     # Use tqdm for progress bar based on audio duration
-    pbar = tqdm(total=round(info.duration, 2), unit="s", desc="Transcription Progress", bar_format='{l_bar}{bar}| {n:.2f}/{total:.2f} [{elapsed}<{remaining}, {rate_fmt}{postfix}]')
+    # dynamic_ncols=True ensures the bar refreshes on the same line by adapting to terminal width
+    pbar = tqdm(
+        total=round(info.duration, 2), 
+        unit="s", 
+        desc="Transcription Progress", 
+        bar_format='{l_bar}{bar}| {n:.2f}/{total:.2f} [{elapsed}<{remaining}, {rate_fmt}{postfix}]',
+        dynamic_ncols=True,
+        leave=True
+    )
     
     # Open files for incremental writing
     txt_path = output_dir / f"{base_name}.txt"
@@ -161,6 +169,11 @@ def main():
             # Log segment to file and terminal (DEBUG level)
             logger.debug(f"[{ms_to_srt_time(start_ms)} -> {ms_to_srt_time(end_ms)}] {text}")
 
+            # Update progress and efficiency
+            # Efficiency is calculated as (processed audio duration) / (actual time elapsed)
+            current_elapsed = time.time() - start_time
+            efficiency = segment.end / current_elapsed if current_elapsed > 0 else 0
+            pbar.set_postfix(eff=f"{efficiency:.2f}x")
             pbar.update(round(segment.end, 2) - pbar.n)
     
     pbar.close()

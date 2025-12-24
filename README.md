@@ -6,16 +6,14 @@ A collection of Python scripts that use OpenAI's Whisper and Faster-Whisper mode
 
 This tool transcribes media files and generates outputs in 4 different formats. It includes support for standard Whisper and the high-performance Faster-Whisper implementation.
 
-## Performance & Timing
+## Key Features
 
-All scripts include performance metrics:
-- **Transcription Time**: Total time taken to process the file.
-- **Speedup**: (For Faster-Whisper) Ratio of audio duration to processing time.
-
-## Progress Updates
-
-- **`transcribe.py` & `transcribe_mp4.py`**: Standard Whisper library. No progress bar, but reports total time at the end.
-- **`transcript_fw_mp4.py`**: Uses `faster-whisper` and `tqdm` for a real-time progress bar.
+- **High Performance**: Uses `faster-whisper` for significantly faster transcription compared to standard OpenAI Whisper.
+- **Thermal Protection**: Monitors GPU temperature and utilization. Automatically pauses transcription if thresholds are exceeded (>55°C or >70% load) to protect hardware.
+- **Incremental Writing**: Writes segments to output files (`.txt`, `.srt`, `.vtt`, `.tsv`) immediately as they are generated, preventing data loss.
+- **Batch Processing**: Support for processing multiple files in sequence with configurable delays.
+- **Comprehensive Logging**: Detailed execution logs for both individual transcriptions and batch processes.
+- **Real-time Progress**: Interactive progress bars with efficiency metrics (Audio Duration / Processing Time).
 
 ---
 
@@ -59,7 +57,7 @@ source .venv/bin/activate
 uv pip install nvidia-cublas nvidia-cudnn-cu13 --extra-index-url https://pypi.nvidia.com
 
 # Install other dependencies
-uv pip install faster-whisper tqdm openai-whisper torch
+uv pip install faster-whisper tqdm openai-whisper torch nvidia-ml-py
 ```
 
 #### 4. Link Python Wrapper to Binaries
@@ -98,47 +96,62 @@ source .venv/bin/activate
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VIRTUAL_ENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$VIRTUAL_ENV/lib/python3.10/site-packages/nvidia/cu13/lib
 ```
 
-### Standard Whisper (MP3)
-```bash
-python transcribe.py path/to/audio.mp3
-```
-
-### Standard Whisper (MP4)
-```bash
-python transcribe_mp4.py path/to/video.mp4
-```
-
-### Faster-Whisper (MP4 with Progress Bar)
-```bash
-python transcript_fw_mp4.py path/to/video.mp4
-```
-
-### Faster-Whisper with Thermal Protection & Logging (Optimized)
-This version monitors GPU temperature and utilization. If the GPU gets too hot (>55°C) while under heavy load (>70%), it automatically pauses transcription to allow the hardware to cool down.
-
-**Key Features:**
-- **Thermal Protection**: Pauses transcription if GPU thresholds are exceeded.
-- **Incremental Writing**: Writes segments to output files immediately as they are generated, preventing data loss if the process is interrupted.
-- **Comprehensive Logging**: Saves all transcription logs, including timestamps and segments, to a `.log` file in the output directory.
-- **Real-time Feedback**: Logs segments to the terminal while maintaining a clean progress bar.
-
+### Optimized Transcription (Recommended)
+This version includes thermal protection, incremental writing, and detailed logging.
 ```bash
 python transcript_fw_mp4_opt.py path/to/video.mp4
 ```
 
-## Output Formats
+### Batch Transcription
+Runs the optimized script on all `.mp4` files in `../recordings-downloads/` that haven't been processed yet, with a 120s delay between files.
+```bash
+python batch_transcribe.py
+```
+
+### Other Scripts
+- **Standard Whisper (MP3)**: `python transcribe.py path/to/audio.mp3`
+- **Standard Whisper (MP4)**: `python transcribe_mp4.py path/to/video.mp4`
+- **Basic Faster-Whisper**: `python transcript_fw_mp4.py path/to/video.mp4`
+
+---
+
+## Output Formats & Organization
+
+### Output Formats
 1. **`.txt`**: Plain text transcript.
 2. **`.srt`**: SubRip subtitles (for video players).
 3. **`.vtt`**: WebVTT subtitles (for web players).
 4. **`.tsv`**: Tab-separated values with millisecond timestamps.
-5. **`.log`**: Detailed transcription logs (Optimized version only).
+5. **`.log`**: Detailed execution logs (Optimized and Batch versions).
 
-## Output Organization
+### Organization
 - **MP3**: Files saved in the same directory as input.
 - **MP4**: Files saved in a dedicated `<filename>_transcribed/` folder.
 
-## Model Options
+### Model Options
 Available: `tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3` (default).
+
+---
+
+## Progress Updates & Interpretation
+
+### Progress Bar Metrics
+When running `transcript_fw_mp4_opt.py`, you will see a real-time progress bar:
+`Transcription Progress:  45%|████▌     | 797.86/1772.37 [02:15<02:45, 5.91s/s, eff=5.91x]`
+
+- **Percentage & Bar**: Visual representation of the audio duration processed.
+- **`797.86/1772.37`**: Seconds of audio processed vs. total audio duration.
+- **`[02:15<02:45]`**: Elapsed time vs. estimated remaining time.
+- **`5.91s/s`**: Processing rate (audio seconds processed per real-world second).
+- **`eff=5.91x`**: **Efficiency Metric**. This represents the ratio of `Audio Duration / Processing Time`. 
+    - An efficiency of **1.0x** means transcription is happening in real-time.
+    - An efficiency of **5.0x** means 1 hour of audio is transcribed in 12 minutes.
+    - Higher values indicate better performance.
+
+### Performance Metrics
+At the end of each run, the script reports:
+- **Transcription Time**: Total time taken to process the file.
+- **Speedup**: Ratio of audio duration to processing time.
 
 ---
 
@@ -146,79 +159,13 @@ Available: `tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3` (d
 
 To monitor GPU temperature, load, and memory usage on the DGX-Spark, we use the official NVIDIA Management Library (NVML) Python bindings.
 
-### Why `nvidia-ml-py`?
-- **Official Support**: It is the official Python binding for NVML, ensuring compatibility with NVIDIA drivers.
-- **Direct Access**: Unlike parsing `nvidia-smi` output, it communicates directly with the driver for lower overhead and higher reliability.
-- **Comprehensive**: Provides access to all hardware metrics including temperature, utilization, and memory.
-
-### Installation
-Install the package in your virtual environment:
-```bash
-uv pip install nvidia-ml-py
-```
-
 ### Monitoring Script
 A monitoring script `gpu_monitor.py` is included to check the status of the GPUs:
-
-```python
-import pynvml
-
-def print_gpu_stats():
-    try:
-        pynvml.nvmlInit()
-        device_count = pynvml.nvmlDeviceGetCount()
-        
-        print(f"Found {device_count} GPU(s)")
-        print("-" * 60)
-        
-        for i in range(device_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            
-            # Get Device Name
-            try:
-                name = pynvml.nvmlDeviceGetName(handle)
-            except pynvml.NVMLError:
-                name = "Unknown"
-            
-            # Temperature
-            try:
-                temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
-                temp_str = f"{temp}°C"
-            except pynvml.NVMLError:
-                temp_str = "N/A"
-            
-            # Memory usage
-            try:
-                mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                mem_used = mem_info.used / 1024**2  # MB
-                mem_total = mem_info.total / 1024**2
-                mem_str = f"{mem_used:.1f} MB / {mem_total:.1f} MB"
-            except pynvml.NVMLError:
-                mem_str = "Not Supported"
-            
-            # Utilization (Load)
-            try:
-                util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                gpu_load = f"{util.gpu}%"
-            except pynvml.NVMLError:
-                gpu_load = "N/A"
-            
-            print(f"GPU {i}: {name}")
-            print(f"  Temperature: {temp_str}")
-            print(f"  Memory:      {mem_str}")
-            print(f"  GPU Load:    {gpu_load}")
-            print("-" * 60)
-            
-    except pynvml.NVMLError as error:
-        print(f"Driver Error: {error}")
-    finally:
-        pynvml.nvmlShutdown()
-
-if __name__ == "__main__":
-    print_gpu_stats()
-```
-
-### Usage
 ```bash
 python gpu_monitor.py
 ```
+
+### Why `nvidia-ml-py`?
+- **Official Support**: Official Python binding for NVML.
+- **Direct Access**: Communicates directly with the driver for high reliability.
+- **Comprehensive**: Access to temperature, utilization, and memory metrics.

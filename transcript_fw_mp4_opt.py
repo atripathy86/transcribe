@@ -110,11 +110,13 @@ def main():
 
     # Use tqdm for progress bar based on audio duration
     # dynamic_ncols=True ensures the bar refreshes on the same line by adapting to terminal width
+    # Using {n_fmt} and {total_fmt} is safer than {n:.2f} and {total:.2f} to avoid NoneType formatting errors
+    duration = info.duration if info.duration is not None else 0
     pbar = tqdm(
-        total=round(info.duration, 2), 
+        total=round(duration, 2), 
         unit="s", 
         desc="Transcription Progress", 
-        bar_format='{l_bar}{bar}| {n:.2f}/{total:.2f} [{elapsed}<{remaining}, {rate_fmt}{postfix}]',
+        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]',
         dynamic_ncols=True,
         leave=True
     )
@@ -172,9 +174,10 @@ def main():
             # Update progress and efficiency
             # Efficiency is calculated as (processed audio duration) / (actual time elapsed)
             current_elapsed = time.time() - start_time
-            efficiency = segment.end / current_elapsed if current_elapsed > 0 else 0
+            seg_end = segment.end if segment.end is not None else 0
+            efficiency = seg_end / current_elapsed if current_elapsed > 0 else 0
             pbar.set_postfix(eff=f"{efficiency:.2f}x")
-            pbar.update(round(segment.end, 2) - pbar.n)
+            pbar.update(round(seg_end, 2) - pbar.n)
     
     pbar.close()
     

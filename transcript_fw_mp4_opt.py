@@ -38,7 +38,7 @@ def ms_to_vtt_time(milliseconds):
     millis = int(milliseconds % 1000)
     return f"{hours:02d}:{minutes:02d}.{millis:03d}" if hours > 0 else f"{minutes:02d}:{secs:02d}.{millis:03d}"
 
-def check_gpu_and_pause(temp_threshold=55, load_threshold=70, pause_time=60):
+def check_gpu_and_pause(temp_threshold=55, load_threshold=70, pause_time=120):
     """Check GPU status and pause if thresholds are exceeded"""
     logger = logging.getLogger(__name__)
     try:
@@ -71,7 +71,7 @@ def main():
     parser.add_argument("--compute_type", default="float16", help="Compute type (float16, int8_float16, int8, etc.)")
     parser.add_argument("--temp_limit", type=int, default=55, help="Temperature threshold to pause (default: 55)")
     parser.add_argument("--load_limit", type=int, default=70, help="Utilization threshold to pause (default: 70)")
-    parser.add_argument("--pause_time", type=int, default=90, help="Seconds to pause when thresholds exceeded (default: 90)")
+    parser.add_argument("--pause_time", type=int, default=120, help="Seconds to pause when thresholds exceeded (default: 120)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
